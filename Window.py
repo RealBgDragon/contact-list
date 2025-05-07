@@ -77,7 +77,7 @@ class Window:
                     self.contact_list.insert(tk.END, contact.name)
 
             messagebox.showinfo("Import Successful", "Contacts imported successfully.")
-
+            self.check_upcoming_birthdays()
         except Exception as e:
             messagebox.showerror("Import Error", f"An error occurred while importing:\n{str(e)}")
     
@@ -151,20 +151,12 @@ class Window:
 
         self.label = tk.Label(self.master, text="Search", font=("Arial", 10))
         self.label.pack(pady=10)
-
-        #Search frame
-        # search_frame = tk.Frame(self.master)
-        # search_frame.pack(pady=5)
-
-        self.search_str = tk.StringVar()
         
+        self.search_str = tk.StringVar()
         self.search = tk.Entry(self.master, textvariable=self.search_str, width=30)
         self.search.pack(padx=(0, 10))
         self.search.bind('<KeyRelease>', self.cb_search)
         
-        # self.button = tk.Button(search_frame, text="Search", command=self.add_contact_popup, width=15)
-        # self.button.pack(side=tk.LEFT)
-
         self.contact_list = tk.Listbox(self.master)
         self.contact_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=tk.TRUE)
 
@@ -190,6 +182,11 @@ class Window:
         self.button = tk.Button(self.master, text="Manage Groups", command=self.group_popup, width=15)
         self.button.pack(padx=5)
 
+        self.upcoming_birthdays_var = tk.StringVar()
+        self.upcoming_birthdays_var.set("Upcoming:\nNone")
+
+        self.upcoming_label = tk.Label(self.master, textvariable=self.upcoming_birthdays_var, anchor='w', justify='left', width=15, font=("Arial", 9))
+        self.upcoming_label.pack(side=tk.RIGHT, anchor='se', padx=5, pady=5)
 
     def cb_search(self, event=None):
         str = self.search_str.get()
@@ -305,6 +302,7 @@ class Window:
         self.contact_list.delete(index)
         for contact in self.contacts:
             print(contact["name"])
+        self.check_upcoming_birthdays()
         
     def update_contact(self, contact, index):
         data = {field_id: entry.get() for field_id, entry in self.entries.items()}
@@ -332,6 +330,7 @@ class Window:
 
         self.popup.destroy()
         messagebox.showinfo("Saved", "Contact information updated successfully!")
+        self.check_upcoming_birthdays()
 
     def save_contact(self):
         data = {field_id: entry.get() for field_id, entry in self.entries.items()}
@@ -358,6 +357,7 @@ class Window:
         
         self.popup.destroy()
         messagebox.showinfo("Saved", "Contact information saved successfully!")
+        self.check_upcoming_birthdays()
         
     def show_contact_details(self, event):
         selection = self.contact_list.curselection()
@@ -396,7 +396,9 @@ class Window:
                 continue  # skip if date format is wrong
 
         if upcoming:
-            messagebox.showinfo("Upcoming Birthdays", "\n".join(upcoming))
+            self.upcoming_birthdays_var.set("Upcoming:\n" + "\n\n".join(upcoming[:3]))
+        else:
+            self.upcoming_birthdays_var.set("Upcoming:\nNone")
 
     def group_popup(self):
         popup = tk.Toplevel(self.master)
