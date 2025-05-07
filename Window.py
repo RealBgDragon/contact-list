@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox 
 from tkinter import filedialog 
 from Contact import Contact
+from datetime import datetime, timedelta
+from tkcalendar import DateEntry
 import csv
 
 class Window:
@@ -32,6 +34,10 @@ class Window:
     def __init__(self, master):
         self.master = master
         self.setup_ui()
+        self.check_upcoming_birthdays()
+        self.groups = {}
+        self.current_group = None
+
     
     def import_contact_list(self):
         try:
@@ -75,9 +81,19 @@ class Window:
         except Exception as e:
             messagebox.showerror("Import Error", f"An error occurred while importing:\n{str(e)}")
     
-    def export_contact_list(self):
+    def export_contact_list(self, single=False):
         try:
-            with open("contactList.csv", "w", newline='', encoding="utf-8") as csvfile:
+            contacts = self.contacts
+            if single:
+                selection = self.contact_list.curselection()
+                contact = contacts[selection[0]]
+                fileName = str(contacts) + ".csv"
+                contacts = None
+                
+            else:
+                fileName = "contactList.csv"
+            print(fileName)
+            with open(fileName, "w", newline='', encoding="utf-8") as csvfile:
                 writer = csv.writer(csvfile)
 
                 # Write header row
@@ -90,15 +106,25 @@ class Window:
                 ])
 
                 # Write each contact's data
-                for contact in self.contacts:
+                if contacts:
+                    for contact in contacts:
+                        writer.writerow([
+                            contact.name, contact.mobilePhone, contact.companyName, contact.companyOccupation,
+                            contact.companyAddress, contact.companyWebPage,
+                            contact.phone2, contact.phone3, contact.homePhone, contact.officePhone,
+                            contact.privateEmail1, contact.privateEmail2, contact.officeEmail,
+                            contact.address, contact.birthDay, contact.notes,
+                            contact.childName, contact.childBirthDay, contact.childNotes
+                        ])
+                else:
                     writer.writerow([
-                        contact.name, contact.mobilePhone, contact.companyName, contact.companyOccupation,
-                        contact.companyAddress, contact.companyWebPage,
-                        contact.phone2, contact.phone3, contact.homePhone, contact.officePhone,
-                        contact.privateEmail1, contact.privateEmail2, contact.officeEmail,
-                        contact.address, contact.birthDay, contact.notes,
-                        contact.childName, contact.childBirthDay, contact.childNotes
-                    ])
+                            contact.name, contact.mobilePhone, contact.companyName, contact.companyOccupation,
+                            contact.companyAddress, contact.companyWebPage,
+                            contact.phone2, contact.phone3, contact.homePhone, contact.officePhone,
+                            contact.privateEmail1, contact.privateEmail2, contact.officeEmail,
+                            contact.address, contact.birthDay, contact.notes,
+                            contact.childName, contact.childBirthDay, contact.childNotes
+                        ])
 
             messagebox.showinfo("Export Successful", "Contacts were exported to contactList.csv")
         except Exception as e:
@@ -121,7 +147,23 @@ class Window:
         menu.add_cascade(label="File", menu=file_menu)
         
         self.label = tk.Label(self.master, text="Welcome to Contact Book!", font=("Arial", 16))
-        self.label.pack(pady=20)
+        self.label.pack(pady=10)
+
+        self.label = tk.Label(self.master, text="Search", font=("Arial", 10))
+        self.label.pack(pady=10)
+
+        #Search frame
+        # search_frame = tk.Frame(self.master)
+        # search_frame.pack(pady=5)
+
+        self.search_str = tk.StringVar()
+        
+        self.search = tk.Entry(self.master, textvariable=self.search_str, width=30)
+        self.search.pack(padx=(0, 10))
+        self.search.bind('<KeyRelease>', self.cb_search)
+        
+        # self.button = tk.Button(search_frame, text="Search", command=self.add_contact_popup, width=15)
+        # self.button.pack(side=tk.LEFT)
 
         self.contact_list = tk.Listbox(self.master)
         self.contact_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=tk.TRUE)
@@ -141,7 +183,34 @@ class Window:
         
         self.button = tk.Button(self.master, text="Delete Contact", command=self.delete_contact_popup, width=15)
         self.button.pack(padx=5)
+        
+        self.button = tk.Button(self.master, text="Export Contact", command=lambda: self.export_contact_list(single=True), width=15)
+        self.button.pack(padx=5)
+        
+        self.button = tk.Button(self.master, text="Manage Groups", command=self.group_popup, width=15)
+        self.button.pack(padx=5)
 
+
+    def cb_search(self, event=None):
+        str = self.search_str.get()
+        self.contact_list.delete(0, tk.END)
+        
+        if str == "":
+            self.fill_listbox(self.contacts)
+            return
+        
+        filtered_data = list()
+        for contact in self.contacts:
+            if str.lower() in contact.name.lower():
+                filtered_data.append(contact)
+
+        self.fill_listbox(filtered_data)  
+
+    def fill_listbox(self, ld):
+        for item in ld:
+            print(item)
+            self.contact_list.insert(tk.END, item)
+    
     def add_contact_popup(self):
         self.popup = tk.Toplevel(self.master)
         self.popup.title("Add New Contact")
@@ -169,7 +238,10 @@ class Window:
         for label_text, field_id in self.fields:
             label = tk.Label(scroll_frame, text=label_text + ":")
             label.pack(pady=1)
-            entry = tk.Entry(scroll_frame, width=50)
+            if field_id == "birthDay" or field_id == "childBirthDay":
+                entry = DateEntry(scroll_frame, date_pattern="yyyy-mm-dd", width=47)
+            else:
+                entry = tk.Entry(scroll_frame, width=50)
             entry.pack(pady=2, padx=30)
             self.entries[field_id] = entry  # use field_id as the key
 
@@ -210,7 +282,10 @@ class Window:
         for label_text, field_id in self.fields:
             label = tk.Label(scroll_frame, text=label_text + ":")
             label.pack(pady=1)
-            entry = tk.Entry(scroll_frame, width=50)
+            if field_id == "birthDay" or field_id == "childBirthDay":
+                entry = DateEntry(scroll_frame, date_pattern="yyyy-mm-dd", width=47)
+            else:
+                entry = tk.Entry(scroll_frame, width=50)
             entry.pack(pady=2, padx=30)
             entry.insert(0, getattr(contact, field_id, ""))
             self.entries[field_id] = entry  # use field_id as the key
@@ -305,3 +380,64 @@ class Window:
         )
 
         messagebox.showinfo("Contact Details", details, parent=self.master)
+    
+    def check_upcoming_birthdays(self):
+        upcoming = []
+        today = datetime.today()
+
+        for contact in self.contacts:
+            try:
+                birthday = datetime.strptime(contact.birthDay, "%Y-%m-%d")
+                birthday_this_year = birthday.replace(year=today.year)
+                delta = (birthday_this_year - today).days
+                if 0 <= delta <= 10:
+                    upcoming.append(f"{contact.name} - {contact.birthDay}")
+            except Exception:
+                continue  # skip if date format is wrong
+
+        if upcoming:
+            messagebox.showinfo("Upcoming Birthdays", "\n".join(upcoming))
+
+    def group_popup(self):
+        popup = tk.Toplevel(self.master)
+        popup.title("Manage Groups")
+
+        group_name_var = tk.StringVar()
+
+        entry = tk.Entry(popup, textvariable=group_name_var)
+        entry.pack()
+
+        def create_group():
+            name = group_name_var.get()
+            if name and name not in self.groups:
+                self.groups[name] = []
+                messagebox.showinfo("Group Created", f"Group '{name}' created.")
+            else:
+                messagebox.showerror("Error", "Group already exists or name is empty.")
+
+        def add_to_group():
+            selection = self.contact_list.curselection()
+            if not selection:
+                messagebox.showerror("Error", "No contact selected.")
+                return
+            contact = self.contacts[selection[0]]
+            name = group_name_var.get()
+            if name in self.groups:
+                self.groups[name].append(contact)
+                messagebox.showinfo("Added", f"{contact.name} added to {name}.")
+
+        def remove_from_group():
+            selection = self.contact_list.curselection()
+            if not selection:
+                messagebox.showerror("Error", "No contact selected.")
+                return
+            contact = self.contacts[selection[0]]
+            name = group_name_var.get()
+            if name in self.groups and contact in self.groups[name]:
+                self.groups[name].remove(contact)
+                messagebox.showinfo("Removed", f"{contact.name} removed from {name}.")
+
+        tk.Button(popup, text="Create Group", command=create_group).pack()
+        tk.Button(popup, text="Add to Group", command=add_to_group).pack()
+        tk.Button(popup, text="Remove from Group", command=remove_from_group).pack()
+        tk.Button(popup, text="Show Group Contacts", command=lambda: self.show_group_contacts(group_name_var.get())).pack()

@@ -32,3 +32,6 @@ class Contact:
         self.childName = childName
         self.childBirthDay = childBirthDay
         self.childNotes = childNotes
+
+    def __str__(self):
+            return self.name
